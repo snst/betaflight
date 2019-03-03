@@ -231,11 +231,13 @@
 #define USE_PWM
 #endif
 
+/*
 #if ((FLASH_SIZE > 256) || (FEATURE_CUT_LEVEL < 4))
 #define USE_HUFFMAN
 #define USE_PINIO
 #define USE_PINIOBOX
 #endif
+*/
 
 #if ((FLASH_SIZE > 256) || (FEATURE_CUT_LEVEL < 3))
 #ifdef USE_SERIALRX_SPEKTRUM
