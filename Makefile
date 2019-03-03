@@ -28,7 +28,7 @@ OPBL      ?= no
 #   empty           - ordinary build with all optimizations enabled
 #   RELWITHDEBINFO  - ordinary build with debug symbols and all optimizations enabled
 #   GDB             - debug build with minimum number of optimizations
-DEBUG     ?=
+DEBUG     ?= GDB
 
 # Insert the debugging hardfault debugger
 # releases should not be built with this flag as it does not disable pwm output

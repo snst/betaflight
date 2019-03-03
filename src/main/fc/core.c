@@ -261,12 +261,13 @@ void updateArmingStatus(void)
         } else {
             unsetArmingDisabled(ARMING_DISABLED_LOAD);
         }
-
+unsetArmingDisabled(ARMING_DISABLED_CALIBRATING);
+/*
         if (isCalibrating()) {
             setArmingDisabled(ARMING_DISABLED_CALIBRATING);
         } else {
             unsetArmingDisabled(ARMING_DISABLED_CALIBRATING);
-        }
+        }*/
 
         if (isModeActivationConditionPresent(BOXPREARM)) {
             if (IS_RC_MODE_ACTIVE(BOXPREARM) && !ARMING_FLAG(WAS_ARMED_WITH_PREARM)) {

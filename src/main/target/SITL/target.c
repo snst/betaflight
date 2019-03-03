@@ -87,6 +87,7 @@ void updateState(const fdm_packet* pkt) {
 
     struct timespec now_ts;
     clock_gettime(CLOCK_MONOTONIC, &now_ts);
+    printf("updateState\n");
 
     const uint64_t realtime_now = micros64_real();
     if (realtime_now > last_realtime + 500*1e3) { // 500ms timeout
@@ -106,13 +107,13 @@ void updateState(const fdm_packet* pkt) {
     y = constrain(-pkt->imu_linear_acceleration_xyz[1] * ACC_SCALE, -32767, 32767);
     z = constrain(-pkt->imu_linear_acceleration_xyz[2] * ACC_SCALE, -32767, 32767);
     fakeAccSet(fakeAccDev, x, y, z);
-//    printf("[acc]%lf,%lf,%lf\n", pkt->imu_linear_acceleration_xyz[0], pkt->imu_linear_acceleration_xyz[1], pkt->imu_linear_acceleration_xyz[2]);
+    printf("[acc]%lf,%lf,%lf\n", pkt->imu_linear_acceleration_xyz[0], pkt->imu_linear_acceleration_xyz[1], pkt->imu_linear_acceleration_xyz[2]);
 
     x = constrain(pkt->imu_angular_velocity_rpy[0] * GYRO_SCALE * RAD2DEG, -32767, 32767);
     y = constrain(-pkt->imu_angular_velocity_rpy[1] * GYRO_SCALE * RAD2DEG, -32767, 32767);
     z = constrain(-pkt->imu_angular_velocity_rpy[2] * GYRO_SCALE * RAD2DEG, -32767, 32767);
     fakeGyroSet(fakeGyroDev, x, y, z);
-//    printf("[gyr]%lf,%lf,%lf\n", pkt->imu_angular_velocity_rpy[0], pkt->imu_angular_velocity_rpy[1], pkt->imu_angular_velocity_rpy[2]);
+    printf("[gyr]%lf,%lf,%lf\n", pkt->imu_angular_velocity_rpy[0], pkt->imu_angular_velocity_rpy[1], pkt->imu_angular_velocity_rpy[2]);
 
 #if !defined(USE_IMU_CALC)
 #if defined(SET_IMU_FROM_EULER)
@@ -175,11 +176,12 @@ void updateState(const fdm_packet* pkt) {
 static void* udpThread(void* data) {
     UNUSED(data);
     int n = 0;
-
+    int i=0;
+    printf("udpThread start!!\n");
     while (workerRunning) {
         n = udpRecv(&stateLink, &fdmPkt, sizeof(fdm_packet), 100);
         if (n == sizeof(fdm_packet)) {
-//            printf("[data]new fdm %d\n", n);
+            printf("[data]new fdm %d, %i\n", n, i++);
             updateState(&fdmPkt);
         }
     }
@@ -450,7 +452,7 @@ void pwmCompleteMotorUpdate(uint8_t motorCount) {
     // get one "fdm_packet" can only send one "servo_packet"!!
     if (pthread_mutex_trylock(&updateLock) != 0) return;
     udpSend(&pwmLink, &pwmPkt, sizeof(servo_packet));
-//    printf("[pwm]%u:%u,%u,%u,%u\n", idlePulse, motorsPwm[0], motorsPwm[1], motorsPwm[2], motorsPwm[3]);
+    printf("[pwm]%u:%u,%u,%u,%u\n", idlePulse, motorsPwm[0], motorsPwm[1], motorsPwm[2], motorsPwm[3]);
 }
 
 void pwmWriteServo(uint8_t index, float value) {

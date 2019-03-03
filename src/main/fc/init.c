@@ -365,7 +365,7 @@ void init(void)
 #endif
 
 #if defined(USE_UART)
-    uartPinConfigure(serialPinConfig());
+  //  uartPinConfigure(serialPinConfig());
 #endif
 
 #if defined(AVOID_UART1_FOR_PWM_PPM)

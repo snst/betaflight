@@ -1695,6 +1695,7 @@ static mspResult_e mspProcessInCommand(uint8_t cmdMSP, sbuf_t *src)
                 for (int i = 0; i < channelCount; i++) {
                     frame[i] = sbufReadU16(src);
                 }
+                printf("MSP_SET_RAW_RC %d %d %d %d\n", frame[0], frame[1], frame[2], frame[3]);
                 rxMspFrameReceive(frame, channelCount);
             }
         }
@@ -2128,7 +2129,7 @@ static mspResult_e mspProcessInCommand(uint8_t cmdMSP, sbuf_t *src)
 
     case MSP_EEPROM_WRITE:
         if (ARMING_FLAG(ARMED)) {
-            return MSP_RESULT_ERROR;
+     //       return MSP_RESULT_ERROR;
         }
 
         if (featureMaskIsCopied) {

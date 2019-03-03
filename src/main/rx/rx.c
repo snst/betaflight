@@ -531,7 +531,7 @@ static void detectAndApplySignalLossBehaviour(void)
     rxFlightChannelsValid = true;
     for (int channel = 0; channel < rxChannelCount; channel++) {
         uint16_t sample = rcRaw[channel];
-
+/*
         const bool validPulse = useValueFromRx && isPulseValid(sample);
 
         if (validPulse) {
@@ -545,7 +545,7 @@ static void detectAndApplySignalLossBehaviour(void)
                     rxFlightChannelsValid = false;
                 }
             }
-        }
+        }*/
 #if defined(USE_PWM) || defined(USE_PPM)
         if (featureIsEnabled(FEATURE_RX_PARALLEL_PWM | FEATURE_RX_PPM)) {
             // smooth output for PWM and PPM
@@ -557,6 +557,8 @@ static void detectAndApplySignalLossBehaviour(void)
         }
     }
 
+failsafeOnValidDataReceived();
+/*
     if (rxFlightChannelsValid && !IS_RC_MODE_ACTIVE(BOXFAILSAFE)) {
         failsafeOnValidDataReceived();
     } else {
@@ -565,7 +567,7 @@ static void detectAndApplySignalLossBehaviour(void)
         for (int channel = 0; channel < rxChannelCount; channel++) {
             rcData[channel] = getRxfailValue(channel);
         }
-    }
+    }*/
     DEBUG_SET(DEBUG_RX_SIGNAL_LOSS, 3, rcData[THROTTLE]);
 }
 
