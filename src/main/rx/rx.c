@@ -568,6 +568,8 @@ failsafeOnValidDataReceived();
             rcData[channel] = getRxfailValue(channel);
         }
     }*/
+    static int i=0;
+    //printf("#%i, THROTTLE=%d, YAW=%d, ROLL=%d, PITCH=%d\n", i++, rcData[THROTTLE], rcData[YAW], rcData[ROLL], rcData[PITCH]);
     DEBUG_SET(DEBUG_RX_SIGNAL_LOSS, 3, rcData[THROTTLE]);
 }
 

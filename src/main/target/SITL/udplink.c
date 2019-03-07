@@ -6,6 +6,7 @@
  */
 
 #include <string.h>
+#include <stdio.h>
 
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -60,10 +61,42 @@ int udpRecv(udpLink_t* link, void* data, size_t size, uint32_t timeout_ms) {
         return -1;
     }
 
-    socklen_t len;
+    //socklen_t len;
     int ret;
     //ret = recvfrom(link->fd, data, size, 0, (struct sockaddr *)&link->recv, &len);
     ret = recv(link->fd, data, size, 0);
-    printf("rec: %d\n", ret);
+    //printf("rec: %d\n", ret);
     return ret;
+}
+
+void* udpRecvWorker(void *ptr)
+{
+    udpLink_t* link = (udpLink_t*) ptr;
+    while(link->running) 
+    {
+        int ret = udpRecv(link, link->buffer, link->buffer_size, link->timeout_ms);
+        if(ret > 0) 
+        {
+            link->onData(link->buffer, (uint32_t)ret);
+        }
+    }
+    return NULL;
+}
+
+
+int udpInitRecvThread(udpLink_t* link, const char* addr, int port, OnUdpData callback, uint32_t timeout_ms, char* buffer, uint32_t buffer_size)
+{
+    link->timeout_ms = timeout_ms;
+    link->onData = callback;
+    link->buffer = buffer;
+    link->buffer_size = buffer_size;
+    link->running = true;
+    udpInit(link, addr, port, true);
+    return pthread_create( &link->thread, NULL, udpRecvWorker, (void*) link);
+}
+
+void udpThreadStop(udpLink_t* link)
+{
+    link->running = false;
+    pthread_join(link->thread, NULL);
 }

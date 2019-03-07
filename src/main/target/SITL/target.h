@@ -38,6 +38,7 @@
 //#define SIMULATOR_ACC_SYNC
 //#define SIMULATOR_GYRO_SYNC
 //#define SIMULATOR_IMU_SYNC
+
 //#define SIMULATOR_GYROPID_SYNC
 
 // file name to save config

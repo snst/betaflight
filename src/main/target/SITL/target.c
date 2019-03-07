@@ -62,7 +62,7 @@ static servo_packet pwmPkt;
 
 static struct timespec start_time;
 static double simRate = 1.0;
-static pthread_t tcpWorker, udpWorker;
+static pthread_t tcpWorker;
 static bool workerRunning = true;
 static udpLink_t stateLink, pwmLink;
 static pthread_mutex_t updateLock;
@@ -71,7 +71,9 @@ static pthread_mutex_t mainLoopLock;
 int timeval_sub(struct timespec *result, struct timespec *x, struct timespec *y);
 
 int lockMainPID(void) {
-    return pthread_mutex_trylock(&mainLoopLock);
+    int r = pthread_mutex_trylock(&mainLoopLock); 
+    printf("pthread_mutex_trylock(mainLoopLock) %d\n", r);
+    return r;
 }
 
 #define RAD2DEG (180.0 / M_PI)
@@ -84,18 +86,20 @@ void updateState(const fdm_packet* pkt) {
     static double last_timestamp = 0; // in seconds
     static uint64_t last_realtime = 0; // in uS
     static struct timespec last_ts; // last packet
+    static int i=0;
 
     struct timespec now_ts;
     clock_gettime(CLOCK_MONOTONIC, &now_ts);
-    printf("updateState\n");
+ //   printf("#%i, updateState\n", i++);
 
+/*
     const uint64_t realtime_now = micros64_real();
     if (realtime_now > last_realtime + 500*1e3) { // 500ms timeout
         last_timestamp = pkt->timestamp;
         last_realtime = realtime_now;
         sendMotorUpdate();
         return;
-    }
+    }*/
 
     const double deltaSim = pkt->timestamp - last_timestamp;  // in seconds
     if (deltaSim < 0) { // don't use old packet
@@ -107,13 +111,13 @@ void updateState(const fdm_packet* pkt) {
     y = constrain(-pkt->imu_linear_acceleration_xyz[1] * ACC_SCALE, -32767, 32767);
     z = constrain(-pkt->imu_linear_acceleration_xyz[2] * ACC_SCALE, -32767, 32767);
     fakeAccSet(fakeAccDev, x, y, z);
-    printf("[acc]%lf,%lf,%lf\n", pkt->imu_linear_acceleration_xyz[0], pkt->imu_linear_acceleration_xyz[1], pkt->imu_linear_acceleration_xyz[2]);
+    //printf("[acc]%lf,%lf,%lf\n", pkt->imu_linear_acceleration_xyz[0], pkt->imu_linear_acceleration_xyz[1], pkt->imu_linear_acceleration_xyz[2]);
 
     x = constrain(pkt->imu_angular_velocity_rpy[0] * GYRO_SCALE * RAD2DEG, -32767, 32767);
     y = constrain(-pkt->imu_angular_velocity_rpy[1] * GYRO_SCALE * RAD2DEG, -32767, 32767);
     z = constrain(-pkt->imu_angular_velocity_rpy[2] * GYRO_SCALE * RAD2DEG, -32767, 32767);
     fakeGyroSet(fakeGyroDev, x, y, z);
-    printf("[gyr]%lf,%lf,%lf\n", pkt->imu_angular_velocity_rpy[0], pkt->imu_angular_velocity_rpy[1], pkt->imu_angular_velocity_rpy[2]);
+    //printf("[gyr]%lf,%lf,%lf\n", pkt->imu_angular_velocity_rpy[0], pkt->imu_angular_velocity_rpy[1], pkt->imu_angular_velocity_rpy[2]);
 
 #if !defined(USE_IMU_CALC)
 #if defined(SET_IMU_FROM_EULER)
@@ -166,13 +170,26 @@ void updateState(const fdm_packet* pkt) {
     last_ts.tv_sec = now_ts.tv_sec;
     last_ts.tv_nsec = now_ts.tv_nsec;
 
-    pthread_mutex_unlock(&updateLock); // can send PWM output now
+//    pthread_mutex_unlock(&updateLock); // can send PWM output now
 
 #if defined(SIMULATOR_GYROPID_SYNC)
     pthread_mutex_unlock(&mainLoopLock); // can run main loop
+    printf("pthread_mutex_unlock(mainLoopLock)\n");
 #endif
 }
 
+static void onNewStateData(const char* data, uint32_t len)
+{
+    static int i = 0;
+    if (len == sizeof(fdm_packet)) {
+        //printf("onNewStateData #%d, %d bytes\n", i++, len);
+        updateState((fdm_packet*) data);
+    } else {
+        printf("onNewStateData err\n");
+    }
+}
+
+/*
 static void* udpThread(void* data) {
     UNUSED(data);
     int n = 0;
@@ -189,6 +206,7 @@ static void* udpThread(void* data) {
     printf("udpThread end!!\n");
     return NULL;
 }
+*/
 
 static void* tcpThread(void* data) {
     UNUSED(data);
@@ -235,10 +253,8 @@ void systemInit(void) {
     ret = udpInit(&pwmLink, "127.0.0.1", 9002, false);
     printf("init PwnOut UDP link...%d\n", ret);
 
-    ret = udpInit(&stateLink, NULL, 9003, true);
+    ret = udpInitRecvThread(&stateLink, NULL, 9003, onNewStateData, 100, (char*)&fdmPkt, sizeof(fdm_packet));
     printf("start UDP server...%d\n", ret);
-
-    ret = pthread_create(&udpWorker, NULL, udpThread, NULL);
     if (ret != 0) {
         printf("Create udpWorker error!\n");
         exit(1);
@@ -252,14 +268,15 @@ void systemReset(void){
     printf("[system]Reset!\n");
     workerRunning = false;
     pthread_join(tcpWorker, NULL);
-    pthread_join(udpWorker, NULL);
+    udpThreadStop(&stateLink);
     exit(0);
 }
+
 void systemResetToBootloader(void) {
     printf("[system]ResetToBootloader!\n");
     workerRunning = false;
     pthread_join(tcpWorker, NULL);
-    pthread_join(udpWorker, NULL);
+    udpThreadStop(&stateLink);
     exit(0);
 }
 
@@ -440,19 +457,29 @@ void pwmCompleteMotorUpdate(uint8_t motorCount) {
     // for gazebo8 ArduCopterPlugin remap, normal range = [0.0, 1.0], 3D rang = [-1.0, 1.0]
 
     double outScale = 1000.0;
-    if (featureIsEnabled(FEATURE_3D)) {
+ //   if (featureIsEnabled(FEATURE_3D)) {
         outScale = 500.0;
-    }
+ //   }
+// 0..1000
+float sub = 1.0;
+static int i=0;
 
-    pwmPkt.motor_speed[3] = motorsPwm[0] / outScale;
-    pwmPkt.motor_speed[0] = motorsPwm[1] / outScale;
-    pwmPkt.motor_speed[1] = motorsPwm[2] / outScale;
-    pwmPkt.motor_speed[2] = motorsPwm[3] / outScale;
+    pwmPkt.motor_speed[3] = (motorsPwm[0] / outScale) - sub;
+    pwmPkt.motor_speed[0] = (motorsPwm[1] / outScale) - sub;
+    pwmPkt.motor_speed[1] = (motorsPwm[2] / outScale) - sub;
+    pwmPkt.motor_speed[2] = (motorsPwm[3] / outScale) - sub;
 
     // get one "fdm_packet" can only send one "servo_packet"!!
-    if (pthread_mutex_trylock(&updateLock) != 0) return;
+ //   if (pthread_mutex_trylock(&updateLock) != 0) return;
     udpSend(&pwmLink, &pwmPkt, sizeof(servo_packet));
-    printf("[pwm]%u:%u,%u,%u,%u\n", idlePulse, motorsPwm[0], motorsPwm[1], motorsPwm[2], motorsPwm[3]);
+    #if 0
+    printf("[pwm]%i: %f/%d, %f/%d, %f/%d, %f/%d  scale=%f\n", i++,
+    pwmPkt.motor_speed[0], motorsPwm[1], // motor 2 front right
+    pwmPkt.motor_speed[1], motorsPwm[2], // motor 3 back left
+    pwmPkt.motor_speed[2], motorsPwm[3], // motor 4 front left
+    pwmPkt.motor_speed[3], motorsPwm[0], // motor 1 back right
+    outScale);
+    #endif
 }
 
 void pwmWriteServo(uint8_t index, float value) {

@@ -1695,7 +1695,7 @@ static mspResult_e mspProcessInCommand(uint8_t cmdMSP, sbuf_t *src)
                 for (int i = 0; i < channelCount; i++) {
                     frame[i] = sbufReadU16(src);
                 }
-                printf("MSP_SET_RAW_RC %d %d %d %d\n", frame[0], frame[1], frame[2], frame[3]);
+                printf("MSP_SET_RAW_RC %d %d %d %d %d %d %d\n", frame[0], frame[1], frame[2], frame[3], frame[4], frame[5], frame[6]);
                 rxMspFrameReceive(frame, channelCount);
             }
         }
