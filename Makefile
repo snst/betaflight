@@ -16,7 +16,7 @@
 #
 
 # The target to build, see VALID_TARGETS below
-TARGET    ?= BETAFLIGHTF3
+TARGET    ?= SITL
 
 # Compile-time options
 OPTIONS   ?=
@@ -28,7 +28,7 @@ OPBL      ?= no
 #   empty           - ordinary build with all optimizations enabled
 #   RELWITHDEBINFO  - ordinary build with debug symbols and all optimizations enabled
 #   GDB             - debug build with minimum number of optimizations
-DEBUG     ?=
+DEBUG     ?= GDB
 
 # Insert the debugging hardfault debugger
 # releases should not be built with this flag as it does not disable pwm output
@@ -56,7 +56,12 @@ CMSIS_DIR       := $(ROOT)/lib/main/CMSIS
 INCLUDE_DIRS    := $(SRC_DIR) \
                    $(ROOT)/src/main/target \
                    $(ROOT)/src/main/startup
-LINKER_DIR      := $(ROOT)/src/main/target/link
+LINKER_DIR      := $(ROOT)/src/main/target/link \
+					-Wl,-lboost_system \
+					-Wl,-L/opt/ros/melodic/lib \
+					-Wl,-lroscpp \
+					-Wl,-L/home/stsc/work/ros_demo/beginner_tutorials/lib \
+					-Wl,-lsonarlib
 
 ## V                 : Set verbosity level based on the V= parameter
 ##                     V=0 Low
@@ -307,7 +312,9 @@ $(TARGET_BIN): $(TARGET_ELF)
 
 $(TARGET_ELF): $(TARGET_OBJS) $(LD_SCRIPT)
 	@echo "Linking $(TARGET)" "$(STDOUT)"
-	$(V1) $(CROSS_CC) -o $@ $(filter-out %.ld,$^) $(LD_FLAGS)
+	@echo "Linking CROSS_CXX $(CROSS_CXX)" "$(STDOUT)"
+	@echo "Linking LD_FLAGS $(LD_FLAGS)" "$(STDOUT)"
+	$(V1) $(CROSS_CXX) -o $@ $(filter-out %.ld,$^) $(LD_FLAGS)
 	$(V1) $(SIZE) $(TARGET_ELF)
 
 # Compile

@@ -2213,6 +2213,7 @@ static mspResult_e mspProcessInCommand(uint8_t cmdMSP, sbuf_t *src)
 
     case MSP_SET_ARMING_DISABLED:
         {
+#ifndef SIMULATOR_BUILD            
             const uint8_t command = sbufReadU8(src);
             uint8_t disableRunawayTakeoff = 0;
 #ifndef USE_RUNAWAY_TAKEOFF
@@ -2235,6 +2236,7 @@ static mspResult_e mspProcessInCommand(uint8_t cmdMSP, sbuf_t *src)
                 runawayTakeoffTemporaryDisable(disableRunawayTakeoff);
 #endif
             }
+#endif            
         }
         break;
 

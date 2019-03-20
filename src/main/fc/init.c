@@ -365,7 +365,9 @@ void init(void)
 #endif
 
 #if defined(USE_UART)
+# if !(defined(DEBUG) && defined(SIMULATOR_BUILD))
     uartPinConfigure(serialPinConfig());
+# endif
 #endif
 
 #if defined(AVOID_UART1_FOR_PWM_PPM)

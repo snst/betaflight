@@ -128,6 +128,10 @@
 #undef USE_SERIAL_4WAY_BLHELI_BOOTLOADER
 #undef USE_SERIAL_4WAY_SK_BOOTLOADER
 
+#undef USE_PINIO
+#undef USE_PINIOBOX
+//#undef USE_RUNAWAY_TAKEOFF
+
 #undef USE_I2C
 #undef USE_SPI
 
@@ -139,6 +143,10 @@
 #define SOFTSERIAL_2_TIMER 3
 
 #define DEFIO_NO_PORTS   // suppress 'no pins defined' warning
+
+#define USE_RANGEFINDER
+#define USE_RANGEFINDER_SITL
+
 
 // belows are internal stuff
 
@@ -248,6 +256,7 @@ typedef struct {
 } fdm_packet;
 typedef struct {
     float motor_speed[4];   // normal: [0.0, 1.0], 3D: [-1.0, 1.0]
+    uint32_t flags;
 } servo_packet;
 
 void FLASH_Unlock(void);

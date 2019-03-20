@@ -36,6 +36,7 @@ typedef enum {
     RANGEFINDER_HCSR04I2C   = 5,
     RANGEFINDER_VL53L0X     = 6,
     RANGEFINDER_UIB         = 7,
+    RANGEFINDER_SITL        = 8,
 } rangefinderType_e;
 
 typedef struct rangefinderConfig_s {

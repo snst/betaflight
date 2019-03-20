@@ -169,6 +169,10 @@ PG_RESET_TEMPLATE(throttleCorrectionConfig_t, throttleCorrectionConfig,
 
 static bool isCalibrating(void)
 {
+#ifdef SIMULATOR_BUILD
+    return false;
+#endif
+
 #ifdef USE_BARO
     if (sensors(SENSOR_BARO) && !isBaroCalibrationComplete()) {
         return true;

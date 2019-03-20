@@ -43,6 +43,7 @@
 #include "drivers/rangefinder/rangefinder.h"
 #include "drivers/rangefinder/rangefinder_hcsr04.h"
 #include "drivers/rangefinder/rangefinder_lidartf.h"
+#include "drivers/rangefinder/rangefinder_SITL.h"
 
 #include "fc/config.h"
 #include "fc/runtime_config.h"
@@ -160,6 +161,13 @@ static bool rangefinderDetect(rangefinderDev_t * dev, uint8_t rangefinderHardwar
 
         case RANGEFINDER_NONE:
             rangefinderHardware = RANGEFINDER_NONE;
+
+#if defined(USE_RANGEFINDER_SITL)
+            if (rangefinderSitlDetect(dev)) {
+                rangefinderHardware = RANGEFINDER_SITL;
+                rescheduleTask(TASK_RANGEFINDER, TASK_PERIOD_MS(RANGEFINDER_TF_TASK_PERIOD_MS));
+            }
+#endif
             break;
     }
 
@@ -263,6 +271,8 @@ void rangefinderUpdate(timeUs_t currentTimeUs)
         rangefinder.dev.update(&rangefinder.dev);
     }
 
+    // stsc
+    rangefinderProcess(1);
     // return rangefinder.dev.delayMs * 1000;  // to microseconds XXX iNav only
 }
 

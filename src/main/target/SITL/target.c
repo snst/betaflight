@@ -8,7 +8,7 @@
  * any later version.
  *
  * Cleanflight and Betaflight are distributed in the hope that they
- * will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * will be useful, but WITHOUT ANY WARRANTY; without even the impliednaub/
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
  *
@@ -54,6 +54,7 @@ const timerHardware_t timerHardware[1]; // unused
 
 #include "dyad.h"
 #include "target/SITL/udplink.h"
+#include "/home/stsc/work/ros_demo/beginner_tutorials/src/sonarlib.h"
 
 uint32_t SystemCoreClock;
 
@@ -67,6 +68,8 @@ static bool workerRunning = true;
 static udpLink_t stateLink, pwmLink;
 static pthread_mutex_t updateLock;
 static pthread_mutex_t mainLoopLock;
+extern uint32_t do_reset;
+
 
 int timeval_sub(struct timespec *result, struct timespec *x, struct timespec *y);
 
@@ -74,12 +77,147 @@ int lockMainPID(void) {
     return pthread_mutex_trylock(&mainLoopLock);
 }
 
+const int SEND_MOTOR_Y = 2;
+const int UPDATE_STATE_Y = 1;
+
+void printfxy(int x, int y, const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    printf("\033[%d;%dH", 15 + y, x);
+    vprintf(format, args);
+    va_end(args);
+    fflush(stdout);
+}
+
 #define RAD2DEG (180.0 / M_PI)
 #define ACC_SCALE (256 / 9.80665)
 #define GYRO_SCALE (16.4)
+
 void sendMotorUpdate() {
-    udpSend(&pwmLink, &pwmPkt, sizeof(servo_packet));
+    static uint32_t i = 0;
+    pwmPkt.flags = do_reset;
+    
+    //udpSend(&pwmLink, &pwmPkt, sizeof(servo_packet));
+    set_motor_data(pwmPkt.motor_speed[0], pwmPkt.motor_speed[1], pwmPkt.motor_speed[2], pwmPkt.motor_speed[3], pwmPkt.flags);
+
+    printfxy(0, SEND_MOTOR_Y, "< ros sendMotorUpdate(#%u, %f, %f, %f, %f, %u)\n", i++, 
+        pwmPkt.motor_speed[0], pwmPkt.motor_speed[1], pwmPkt.motor_speed[2], pwmPkt.motor_speed[3], pwmPkt.flags);
+
 }
+
+
+void updateState() {
+    static double last_timestamp = 0; // in seconds
+    static uint64_t last_realtime = 0; // in uS
+    static struct timespec last_ts; // last packet
+
+    struct timespec now_ts;
+    clock_gettime(CLOCK_MONOTONIC, &now_ts);
+
+    static uint32_t i = 0;
+    printfxy(0, UPDATE_STATE_Y, "> updateState(#%u)\n", i++);
+
+    const uint64_t realtime_now = micros64_real();
+    if (realtime_now > last_realtime + 500*1e3) { // 500ms timeout
+        last_timestamp = get_simtime();
+        last_realtime = realtime_now;
+        sendMotorUpdate();
+        return;
+    }
+
+    const double deltaSim = get_simtime() - last_timestamp;  // in seconds
+    if (deltaSim < 0) { // don't use old packet
+        return;
+    }
+
+    int16_t x,y,z;
+    x = constrain(-get_imu_linear_acceleration_x() * ACC_SCALE, -32767, 32767);
+    y = constrain(-get_imu_linear_acceleration_y() * ACC_SCALE, -32767, 32767);
+    z = constrain(-get_imu_linear_acceleration_z() * ACC_SCALE, -32767, 32767);
+    fakeAccSet(fakeAccDev, x, y, z);
+//    printf("[acc]%lf,%lf,%lf\n", pkt->imu_linear_acceleration_xyz[0], pkt->imu_linear_acceleration_xyz[1], pkt->imu_linear_acceleration_xyz[2]);
+
+    x = constrain(get_imu_angular_velocity_r() * GYRO_SCALE * RAD2DEG, -32767, 32767);
+    y = constrain(-get_imu_angular_velocity_p() * GYRO_SCALE * RAD2DEG, -32767, 32767);
+    z = constrain(-get_imu_angular_velocity_y() * GYRO_SCALE * RAD2DEG, -32767, 32767);
+    fakeGyroSet(fakeGyroDev, x, y, z);
+//    printf("[gyr]%lf,%lf,%lf\n", pkt->imu_angular_velocity_rpy[0], pkt->imu_angular_velocity_rpy[1], pkt->imu_angular_velocity_rpy[2]);
+
+#if !defined(USE_IMU_CALC)
+#if defined(SET_IMU_FROM_EULER)
+    // set from Euler
+    double qw = get_imu_orientation_quat_w();
+    double qx = get_imu_orientation_quat_x();
+    double qy = get_imu_orientation_quat_y();
+    double qz = get_imu_orientation_quat_z();
+    double ysqr = qy * qy;
+    double xf, yf, zf;
+
+    // roll (x-axis rotation)
+    double t0 = +2.0 * (qw * qx + qy * qz);
+    double t1 = +1.0 - 2.0 * (qx * qx + ysqr);
+    xf = atan2(t0, t1) * RAD2DEG;
+
+    // pitch (y-axis rotation)
+    double t2 = +2.0 * (qw * qy - qz * qx);
+    t2 = t2 > 1.0 ? 1.0 : t2;
+    t2 = t2 < -1.0 ? -1.0 : t2;
+    yf = asin(t2) * RAD2DEG; // from wiki
+
+    // yaw (z-axis rotation)
+    double t3 = +2.0 * (qw * qz + qx * qy);
+    double t4 = +1.0 - 2.0 * (ysqr + qz * qz);
+    zf = atan2(t3, t4) * RAD2DEG;
+    imuSetAttitudeRPY(xf, -yf, zf); // yes! pitch was inverted!!
+#else
+    imuSetAttitudeQuat(get_imu_orientation_quat_w(), get_imu_orientation_quat_x(), get_imu_orientation_quat_y(), get_imu_orientation_quat_z());
+#endif
+#endif
+
+#if defined(SIMULATOR_IMU_SYNC)
+    imuSetHasNewData(deltaSim*1e6);
+    imuUpdateAttitude(micros());
+#endif
+
+
+    if (deltaSim < 0.02 && deltaSim > 0) { // simulator should run faster than 50Hz
+//        simRate = simRate * 0.5 + (1e6 * deltaSim / (realtime_now - last_realtime)) * 0.5;
+        struct timespec out_ts;
+        timeval_sub(&out_ts, &now_ts, &last_ts);
+        simRate = deltaSim / (out_ts.tv_sec + 1e-9*out_ts.tv_nsec);
+    }
+//    printf("simRate = %lf, millis64 = %lu, millis64_real = %lu, deltaSim = %lf\n", simRate, millis64(), millis64_real(), deltaSim*1e6);
+
+    last_timestamp = get_simtime();
+    last_realtime = micros64_real();
+
+    last_ts.tv_sec = now_ts.tv_sec;
+    last_ts.tv_nsec = now_ts.tv_nsec;
+
+    pthread_mutex_unlock(&updateLock); // can send PWM output now
+
+#if defined(SIMULATOR_GYROPID_SYNC)
+    pthread_mutex_unlock(&mainLoopLock); // can run main loop
+#endif
+}
+
+static void* udpThread(void* data) {
+    UNUSED(data);
+    int n = 0;
+
+    while (workerRunning) {
+        updateState();
+    }
+
+    printf("udpThread end!!\n");
+    return NULL;
+}
+
+
+
+
+#if 0
 void updateState(const fdm_packet* pkt) {
     static double last_timestamp = 0; // in seconds
     static uint64_t last_realtime = 0; // in uS
@@ -87,6 +225,9 @@ void updateState(const fdm_packet* pkt) {
 
     struct timespec now_ts;
     clock_gettime(CLOCK_MONOTONIC, &now_ts);
+
+    static uint32_t i = 0;
+    printfxy(0, UPDATE_STATE_Y, "> updateState(#%u)\n", i++);
 
     const uint64_t realtime_now = micros64_real();
     if (realtime_now > last_realtime + 500*1e3) { // 500ms timeout
@@ -179,14 +320,18 @@ static void* udpThread(void* data) {
     while (workerRunning) {
         n = udpRecv(&stateLink, &fdmPkt, sizeof(fdm_packet), 100);
         if (n == sizeof(fdm_packet)) {
-//            printf("[data]new fdm %d\n", n);
             updateState(&fdmPkt);
+        }
+        else
+        { 
+        //    printf("recv: %d\n", n);
         }
     }
 
     printf("udpThread end!!\n");
     return NULL;
 }
+#endif
 
 static void* tcpThread(void* data) {
     UNUSED(data);
@@ -241,6 +386,9 @@ void systemInit(void) {
         printf("Create udpWorker error!\n");
         exit(1);
     }
+
+    start_ros_worker();
+
 
     // serial can't been slow down
     rescheduleTask(TASK_SERIAL, 1);
@@ -448,9 +596,11 @@ void pwmCompleteMotorUpdate(uint8_t motorCount) {
     pwmPkt.motor_speed[2] = motorsPwm[3] / outScale;
 
     // get one "fdm_packet" can only send one "servo_packet"!!
-    if (pthread_mutex_trylock(&updateLock) != 0) return;
-    udpSend(&pwmLink, &pwmPkt, sizeof(servo_packet));
-//    printf("[pwm]%u:%u,%u,%u,%u\n", idlePulse, motorsPwm[0], motorsPwm[1], motorsPwm[2], motorsPwm[3]);
+    //if (pthread_mutex_trylock(&updateLock) != 0) return;
+    sendMotorUpdate();
+    //udpSend(&pwmLink, &pwmPkt, sizeof(servo_packet));
+    //printf("[pwm]%u:%u,%u,%u,%u\n", idlePulse, motorsPwm[0], motorsPwm[1], motorsPwm[2], motorsPwm[3]);
+    //printfxy(0,11,"[pwmPkt_a]%f,%f,%f,%f\n", pwmPkt.motor_speed[0], pwmPkt.motor_speed[1], pwmPkt.motor_speed[2], pwmPkt.motor_speed[3]);
 }
 
 void pwmWriteServo(uint8_t index, float value) {
