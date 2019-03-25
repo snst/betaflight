@@ -60,8 +60,8 @@ LINKER_DIR      := $(ROOT)/src/main/target/link \
 					-Wl,-lboost_system \
 					-Wl,-L/opt/ros/melodic/lib \
 					-Wl,-lroscpp \
-					-Wl,-L/home/stsc/work/ros_demo/beginner_tutorials/lib \
-					-Wl,-lsonarlib
+					-Wl,-L/home/stsc/work/ros_ws/sitl_ipc/lib \
+					-Wl,-lsitl_ipc_fc
 
 ## V                 : Set verbosity level based on the V= parameter
 ##                     V=0 Low
