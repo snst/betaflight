@@ -23,7 +23,7 @@
 
 #include "platform.h"
 
-#if defined(USE_RANGEFINDER_SITL)
+#if defined(USE_FAKE_RANGEFINDER)
 
 #include "build/build_config.h"
 #include "build/debug.h"
@@ -38,7 +38,7 @@
 
 #include "drivers/rangefinder/rangefinder.h"
 #include "drivers/rangefinder/rangefinder_SITL.h"
-#include "/home/stsc/work/ros_demo/beginner_tutorials/src/sonarlib.h"
+
 
 #define SITL_RANGEFINDER_MAX_RANGE_CM 400 // 4m, from HC-SR04 spec sheet
 #define SITL_RANGEFINDER_DETECTION_CONE_DECIDEGREES 300 // recommended cone angle30 degrees, from HC-SR04 spec sheet
@@ -48,6 +48,7 @@
 int32_t SITL_lastCalculatedDistance = RANGEFINDER_OUT_OF_RANGE;
 static timeMs_t lastMeasurementStartedAt = 0;
 
+int get_sonar_range();
 
 void sitl_rangefinder_init(rangefinderDev_t *dev)
 {

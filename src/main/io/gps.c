@@ -285,6 +285,11 @@ void gpsInit(void)
     gpsSetState(GPS_UNKNOWN);
 
     gpsData.lastMessage = millis();
+
+#ifdef USE_FAKE_GPS
+    gpsSetState(GPS_INITIALIZED);
+    return;
+#endif
     
     if (gpsConfig()->provider == GPS_MSP) { // no serial ports used when GPS_MSP is configured
         gpsSetState(GPS_INITIALIZED);
@@ -498,8 +503,26 @@ static void updateGpsIndicator(timeUs_t currentTimeUs)
     }
 }
 
+double get_gps_latitude();
+double get_gps_longitude();
+
 void gpsUpdate(timeUs_t currentTimeUs)
 {
+#ifdef USE_FAKE_GPS
+    gpsSol.numSat = 8;
+    gpsSol.llh.lat = get_gps_latitude() * GPS_DEGREES_DIVIDER;
+    gpsSol.llh.lon = get_gps_longitude() * GPS_DEGREES_DIVIDER; 
+    ENABLE_STATE(GPS_FIX);
+         /*   gpsSol.numSat = sbufReadU8(src);
+        gpsSol.llh.lat = sbufReadU32(src);
+        gpsSol.llh.lon = sbufReadU32(src);
+        gpsSol.llh.altCm = sbufReadU16(src) * 100; // alt changed from 1m to 0.01m per lsb since MSP API 1.39 by RTH. Received MSP altitudes in 1m per lsb have to upscaled.
+        gpsSol.groundSpeed = sbufReadU16(src);
+        GPS_update |= GPS_MSP_UPDATE;        // MSP data signalisation to GPS functions
+*/
+    return;
+#endif
+
     // read out available GPS bytes
     if (gpsPort) {
         while (serialRxBytesWaiting(gpsPort))

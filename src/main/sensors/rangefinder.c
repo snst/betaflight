@@ -162,7 +162,7 @@ static bool rangefinderDetect(rangefinderDev_t * dev, uint8_t rangefinderHardwar
         case RANGEFINDER_NONE:
             rangefinderHardware = RANGEFINDER_NONE;
 
-#if defined(USE_RANGEFINDER_SITL)
+#if defined(USE_FAKE_RANGEFINDER)
             if (rangefinderSitlDetect(dev)) {
                 rangefinderHardware = RANGEFINDER_SITL;
                 rescheduleTask(TASK_RANGEFINDER, TASK_PERIOD_MS(RANGEFINDER_TF_TASK_PERIOD_MS));

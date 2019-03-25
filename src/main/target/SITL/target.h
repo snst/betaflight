@@ -145,8 +145,10 @@
 #define DEFIO_NO_PORTS   // suppress 'no pins defined' warning
 
 #define USE_RANGEFINDER
-#define USE_RANGEFINDER_SITL
+#define USE_FAKE_RANGEFINDER
 
+#define USE_GPS
+#define USE_FAKE_GPS
 
 // belows are internal stuff
 
