@@ -64,7 +64,7 @@ static struct timespec start_time;
 static double simRate = 1.0;
 static pthread_t tcpWorker;
 static bool workerRunning = true;
-static pthread_mutex_t updateLock;
+//static pthread_mutex_t updateLock;
 static pthread_mutex_t mainLoopLock;
 extern uint32_t do_reset;
 
@@ -93,6 +93,7 @@ double get_gps_longitude()
 const int UPDATE_STATE_Y = 1;
 const int SEND_MOTOR_Y = 2;
 const int SONAR_Y = 3;
+const int SIMRATE_Y = 4;
 
 void printfxy(int x, int y, const char *format, ...)
 {
@@ -108,10 +109,20 @@ void printfxy(int x, int y, const char *format, ...)
 #define ACC_SCALE (256 / 9.80665)
 #define GYRO_SCALE (16.4)
 
+static bool last_reset = false;
+static int cc=0;
+
 void sendMotorUpdate()
 {
     static uint32_t i = 0;
     //actuator_state.flags = do_reset;
+
+    if (do_reset != last_reset) {
+        printf("\n\n\nRESET %d!!!!!!!!!!!!!!!!!!!\n\n", cc++);
+        if(do_reset)
+            sitl_reset_world();
+    }
+    last_reset = do_reset;
     
     sitl_set_motor(&sitl_motor);
 
@@ -139,9 +150,10 @@ void sitl_state_callback(struct sitl_state_t *state)
         return;
     }
 
-    const double deltaSim = state->sim_time - last_timestamp; // in seconds
+    const double deltaSim = state->sim_time - last_timestamp; // in ms, max step size in gazebo
     printfxy(0, UPDATE_STATE_Y, ">> sitl_state_callback(#%u, delta=%f, sim_time=%f)", i++, deltaSim, state->sim_time);
     printfxy(0, SONAR_Y, "> sonar %f", state->sonar.distance);
+
 
     if (deltaSim < 0)
     { // don't use old packet
@@ -201,6 +213,7 @@ void sitl_state_callback(struct sitl_state_t *state)
     imuUpdateAttitude(micros());
 #endif
 
+
     if (deltaSim < 0.02 && deltaSim > 0)
     {   // simulator should run faster than 50Hz
         //        simRate = simRate * 0.5 + (1e6 * deltaSim / (realtime_now - last_realtime)) * 0.5;
@@ -208,7 +221,9 @@ void sitl_state_callback(struct sitl_state_t *state)
         timeval_sub(&out_ts, &now_ts, &last_ts);
         simRate = deltaSim / (out_ts.tv_sec + 1e-9 * out_ts.tv_nsec);
     }
-    //    printf("simRate = %lf, millis64 = %lu, millis64_real = %lu, deltaSim = %lf\n", simRate, millis64(), millis64_real(), deltaSim*1e6);
+    
+        printf("simRate = %lf, millis64 = %lu, millis64_real = %lu, deltaSim = %lf\n", simRate, millis64(), millis64_real(), deltaSim*1e6);
+    //printfxy(0, SIMRATE_Y, "simRate=%lf, deltaSim=%lf", simRate, deltaSim);
 
     last_timestamp = state->sim_time;
     last_realtime = micros64_real();
@@ -216,7 +231,7 @@ void sitl_state_callback(struct sitl_state_t *state)
     last_ts.tv_sec = now_ts.tv_sec;
     last_ts.tv_nsec = now_ts.tv_nsec;
 
-    pthread_mutex_unlock(&updateLock); // can send PWM output now
+//    pthread_mutex_unlock(&updateLock); // can send PWM output now
 
 #if defined(SIMULATOR_GYROPID_SYNC)
     pthread_mutex_unlock(&mainLoopLock); // can run main loop
@@ -253,11 +268,11 @@ void systemInit(void)
     SystemCoreClock = 500 * 1e6; // fake 500MHz
     FLASH_Unlock();
 
-    if (pthread_mutex_init(&updateLock, NULL) != 0)
+    /*if (pthread_mutex_init(&updateLock, NULL) != 0)
     {
         printf("Create updateLock error!\n");
         exit(1);
-    }
+    }*/
 
     if (pthread_mutex_init(&mainLoopLock, NULL) != 0)
     {
