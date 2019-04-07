@@ -98,6 +98,8 @@ COMMON_SRC = \
             rx/rx.c \
             rx/rx_spi.c \
             rx/rx_spi_common.c \
+            rx/rx_ros.c \
+            rx/rx_overdrive.c \
             rx/crsf.c \
             rx/sbus.c \
             rx/sbus_channels.c \

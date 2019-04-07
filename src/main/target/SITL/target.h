@@ -150,6 +150,9 @@
 #define USE_GPS
 #define USE_FAKE_GPS
 
+#define USE_RX_ROS
+#define USE_RX_OVERDRIVE
+
 // belows are internal stuff
 
 extern uint32_t SystemCoreClock;

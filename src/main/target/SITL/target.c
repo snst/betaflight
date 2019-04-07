@@ -126,7 +126,7 @@ void sendMotorUpdate()
     
     sitl_set_motor(&sitl_motor);
 
-    printfxy(0, SEND_MOTOR_Y, "<< ros sendMotorUpdate(#%u, %f, %f, %f, %f, %u)\n", i++, sitl_motor.motor[0], sitl_motor.motor[1], sitl_motor.motor[2], sitl_motor.motor[3], 0);
+//    printfxy(0, SEND_MOTOR_Y, "<< ros sendMotorUpdate(#%u, %f, %f, %f, %f, %u)\n", i++, sitl_motor.motor[0], sitl_motor.motor[1], sitl_motor.motor[2], sitl_motor.motor[3], 0);
 }
 
 void sitl_state_callback(struct sitl_state_t *state)
@@ -151,8 +151,8 @@ void sitl_state_callback(struct sitl_state_t *state)
     }
 
     const double deltaSim = state->sim_time - last_timestamp; // in ms, max step size in gazebo
-    printfxy(0, UPDATE_STATE_Y, ">> sitl_state_callback(#%u, delta=%f, sim_time=%f)", i++, deltaSim, state->sim_time);
-    printfxy(0, SONAR_Y, "> sonar %f", state->sonar.distance);
+ //   printfxy(0, UPDATE_STATE_Y, ">> sitl_state_callback(#%u, delta=%f, sim_time=%f)", i++, deltaSim, state->sim_time);
+ //   printfxy(0, SONAR_Y, "> sonar %f", state->sonar.distance);
 
 
     if (deltaSim < 0)
@@ -222,7 +222,7 @@ void sitl_state_callback(struct sitl_state_t *state)
         simRate = deltaSim / (out_ts.tv_sec + 1e-9 * out_ts.tv_nsec);
     }
     
-        printf("simRate = %lf, millis64 = %lu, millis64_real = %lu, deltaSim = %lf\n", simRate, millis64(), millis64_real(), deltaSim*1e6);
+    //    printf("simRate = %lf, millis64 = %lu, millis64_real = %lu, deltaSim = %lf\n", simRate, millis64(), millis64_real(), deltaSim*1e6);
     //printfxy(0, SIMRATE_Y, "simRate=%lf, deltaSim=%lf", simRate, deltaSim);
 
     last_timestamp = state->sim_time;

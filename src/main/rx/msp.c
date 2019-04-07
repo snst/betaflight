@@ -58,12 +58,12 @@ void rxMspFrameReceive(uint16_t *frame, int channelCount)
     for (int i = channelCount; i < MAX_SUPPORTED_RC_CHANNEL_COUNT; i++) {
         mspFrame[i] = 0;
     }
-
+/*
     static uint32_t j=0;
     printfxy(0, 0, "> rxMspFrameReceive(#%u%c, %i, %i, %i, %i, %i, %i, %i, %i)", j++, 
         (ARMING_FLAG(ARMED) ? '!':'-'), 
         mspFrame[0], mspFrame[1], mspFrame[2], mspFrame[3], mspFrame[4], mspFrame[5], mspFrame[6], mspFrame[7]);
-
+*/
     do_reset = (mspFrame[7]>1600) ? 1 : 0;
 
     rxMspFrameDone = true;

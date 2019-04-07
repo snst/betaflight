@@ -303,6 +303,16 @@ void rxInit(void)
     }
 #endif
 
+#ifdef USE_RX_ROS
+//    rxRosInit(rxConfig(), &rxRuntimeConfig);
+#endif
+
+#ifdef USE_RX_OVERDRIVE
+    rxOverdriveInit(rxConfig(), &rxRuntimeConfig);
+    needRxSignalMaxDelayUs = DELAY_5_HZ;
+#endif
+
+
 #if defined(USE_ADC)
     if (featureIsEnabled(FEATURE_RSSI_ADC)) {
         rssiSource = RSSI_SOURCE_ADC;
@@ -503,12 +513,16 @@ STATIC_UNIT_TESTED uint16_t applyRxChannelRangeConfiguraton(int sample, const rx
 
 static void readRxChannelsApplyRanges(void)
 {
+    uint16_t rc[8];
     for (int channel = 0; channel < rxChannelCount; channel++) {
 
         const uint8_t rawChannel = channel < RX_MAPPABLE_CHANNEL_COUNT ? rxConfig()->rcmap[channel] : channel;
 
         // sample the channel
         uint16_t sample = rxRuntimeConfig.rcReadRawFn(&rxRuntimeConfig, rawChannel);
+        if(channel < 8) {
+            rc[channel] = sample;
+        }
 
         // apply the rx calibration
         if (channel < NON_AUX_CHANNEL_COUNT) {
@@ -517,6 +531,8 @@ static void readRxChannelsApplyRanges(void)
 
         rcRaw[channel] = sample;
     }
+   // static int kk=0;
+   // printf("RC#%d: %d %d %d %d %d %d %d %d\n", kk++,rc[0], rc[1], rc[2], rc[3], rc[4], rc[5], rc[6], rc[7]);
 }
 
 static void detectAndApplySignalLossBehaviour(void)
