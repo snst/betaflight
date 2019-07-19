@@ -39,16 +39,16 @@
 #include "drivers/rangefinder/rangefinder.h"
 #include "drivers/rangefinder/rangefinder_SITL.h"
 
+#include "fcl_types.h"
 
 #define SITL_RANGEFINDER_MAX_RANGE_CM 400 // 4m, from HC-SR04 spec sheet
 #define SITL_RANGEFINDER_DETECTION_CONE_DECIDEGREES 300 // recommended cone angle30 degrees, from HC-SR04 spec sheet
 #define SITL_RANGEFINDER_DETECTION_CONE_EXTENDED_DECIDEGREES 450 // in practice 45 degrees seems to work well
 
 
-int32_t SITL_lastCalculatedDistance = RANGEFINDER_OUT_OF_RANGE;
+static fcl_sonar_t data_sonar = { RANGEFINDER_OUT_OF_RANGE };
 static timeMs_t lastMeasurementStartedAt = 0;
 
-int get_sonar_range();
 
 void sitl_rangefinder_init(rangefinderDev_t *dev)
 {
@@ -67,8 +67,7 @@ void sitl_rangefinder_update(rangefinderDev_t *dev)
     // to avoid interference between consecutive measurements
     if (timeNowMs > lastMeasurementStartedAt + SITL_RANGEFINDER_MinimumFiringIntervalMs) {
 
-        SITL_lastCalculatedDistance = get_sonar_range();
-;
+        fcl_get_from_sim(eSonar, &data_sonar);
 
         // Trigger a new measurement
         lastMeasurementStartedAt = timeNowMs;
@@ -81,7 +80,7 @@ void sitl_rangefinder_update(rangefinderDev_t *dev)
 int32_t sitl_rangefinder_get_distance(rangefinderDev_t *dev)
 {
     UNUSED(dev);
-    return SITL_lastCalculatedDistance;
+    return data_sonar.dist;
 }
 
 bool rangefinderSitlDetect(rangefinderDev_t *dev)

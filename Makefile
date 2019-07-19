@@ -55,13 +55,13 @@ BIN_DIR         := $(ROOT)/obj
 CMSIS_DIR       := $(ROOT)/lib/main/CMSIS
 INCLUDE_DIRS    := $(SRC_DIR) \
                    $(ROOT)/src/main/target \
-                   $(ROOT)/src/main/startup
+                   $(ROOT)/src/main/startup \
+				   /home/stsc/work/fccom/impl/include
 LINKER_DIR      := $(ROOT)/src/main/target/link \
-					-Wl,-lboost_system \
-					-Wl,-L/opt/ros/melodic/lib \
-					-Wl,-lroscpp \
-					-Wl,-L/home/stsc/work/ros_ws/sitl_ipc/lib \
-					-Wl,-lsitl_ipc_fc
+					-Wl,-L/home/stsc/work/fccom/build/impl/src/sim_proxy \
+					-Wl,-lfcl_sim_proxy \
+					-Wl,-L/home/stsc/work/fccom/build/impl/src/common \
+					-Wl,-lfcl_common
 
 ## V                 : Set verbosity level based on the V= parameter
 ##                     V=0 Low

@@ -54,11 +54,12 @@ const timerHardware_t timerHardware[1]; // unused
 
 #include "dyad.h"
 #include "target/SITL/udplink.h"
-#include "/home/stsc/work/ros_ws/sitl_ipc/include/sitl_ipc_fc.h"
+#include "fcl_sim_proxy.h"
 
 uint32_t SystemCoreClock;
 
-struct sitl_motor_t sitl_motor;
+//struct sitl_motor_t sitl_motor;
+fcl_motor_t data_motor = {0};
 
 static struct timespec start_time;
 static double simRate = 1.0;
@@ -74,21 +75,6 @@ int lockMainPID(void)
 {
     return pthread_mutex_trylock(&mainLoopLock);
 }
-
-int get_sonar_range()
-{
-    return sitl_get_sonar()->distance;
-}
-
-double get_gps_latitude()
-{
-    return sitl_get_gps()->latitude;
-}
-double get_gps_longitude()
-{
-    return sitl_get_gps()->longitude;
-}
-
 
 const int UPDATE_STATE_Y = 1;
 const int SEND_MOTOR_Y = 2;
@@ -114,23 +100,31 @@ static int cc=0;
 
 void sendMotorUpdate()
 {
-    static uint32_t i = 0;
+//    static uint32_t i = 0;
     //actuator_state.flags = do_reset;
 
     if (do_reset != last_reset) {
         printf("\n\n\nRESET %d!!!!!!!!!!!!!!!!!!!\n\n", cc++);
-        if(do_reset)
-            sitl_reset_world();
+        //if(do_reset)
+          //  sitl_reset_world();
     }
     last_reset = do_reset;
     
-    sitl_set_motor(&sitl_motor);
+    //sitl_set_motor(&sitl_motor);
+    fcl_send_to_sim(eMotor, &data_motor);
 
 //    printfxy(0, SEND_MOTOR_Y, "<< ros sendMotorUpdate(#%u, %f, %f, %f, %f, %u)\n", i++, sitl_motor.motor[0], sitl_motor.motor[1], sitl_motor.motor[2], sitl_motor.motor[3], 0);
 }
 
-void sitl_state_callback(struct sitl_state_t *state)
+void fcl_callback(fclCmd_t data)
 {
+    if (eImu != data) {
+        return;
+    }
+
+    fcl_imu_t imu;
+    fcl_get_from_sim(eImu, &imu);
+
     static double last_timestamp = 0;  // in seconds
     static uint64_t last_realtime = 0; // in uS
     static struct timespec last_ts;    // last packet
@@ -138,20 +132,20 @@ void sitl_state_callback(struct sitl_state_t *state)
     struct timespec now_ts;
     clock_gettime(CLOCK_MONOTONIC, &now_ts);
 
-    static uint32_t i = 0;
+    //static uint32_t i = 0;
 
 
     const uint64_t realtime_now = micros64_real();
     if (realtime_now > last_realtime + 500 * 1e3)
     { // 500ms timeout
-        last_timestamp = state->sim_time;
+        last_timestamp = imu.sim_time;
         last_realtime = realtime_now;
         sendMotorUpdate();
         return;
     }
 
-    const double deltaSim = state->sim_time - last_timestamp; // in ms, max step size in gazebo
- //   printfxy(0, UPDATE_STATE_Y, ">> sitl_state_callback(#%u, delta=%f, sim_time=%f)", i++, deltaSim, state->sim_time);
+    const double deltaSim = imu.sim_time - last_timestamp; // in ms, max step size in gazebo
+ //   printfxy(0, UPDATE_STATE_Y, ">> sitl_state_callback(#%u, delta=%f, sim_time=%f)", i++, deltaSim, imu.sim_time);
  //   printfxy(0, SONAR_Y, "> sonar %f", state->sonar.distance);
 
 
@@ -161,15 +155,15 @@ void sitl_state_callback(struct sitl_state_t *state)
     }
 
     int16_t x, y, z;
-    x = constrain(-state->imu.linear_acceleration_x * ACC_SCALE, -32767, 32767);
-    y = constrain(-state->imu.linear_acceleration_y * ACC_SCALE, -32767, 32767);
-    z = constrain(-state->imu.linear_acceleration_z * ACC_SCALE, -32767, 32767);
+    x = constrain(-imu.linear_acceleration_x * ACC_SCALE, -32767, 32767);
+    y = constrain(-imu.linear_acceleration_y * ACC_SCALE, -32767, 32767);
+    z = constrain(-imu.linear_acceleration_z * ACC_SCALE, -32767, 32767);
     fakeAccSet(fakeAccDev, x, y, z);
     //    printf("[acc]%lf,%lf,%lf\n", pkt->imu_linear_acceleration_xyz[0], pkt->imu_linear_acceleration_xyz[1], pkt->imu_linear_acceleration_xyz[2]);
 
-    x = constrain(state->imu.angular_velocity_r * GYRO_SCALE * RAD2DEG, -32767, 32767);
-    y = constrain(-state->imu.angular_velocity_p * GYRO_SCALE * RAD2DEG, -32767, 32767);
-    z = constrain(-state->imu.angular_velocity_y * GYRO_SCALE * RAD2DEG, -32767, 32767);
+    x = constrain(imu.angular_velocity_r * GYRO_SCALE * RAD2DEG, -32767, 32767);
+    y = constrain(-imu.angular_velocity_p * GYRO_SCALE * RAD2DEG, -32767, 32767);
+    z = constrain(-imu.angular_velocity_y * GYRO_SCALE * RAD2DEG, -32767, 32767);
     fakeGyroSet(fakeGyroDev, x, y, z);
     //    printf("[gyr]%lf,%lf,%lf\n", pkt->imu_angular_velocity_rpy[0], pkt->imu_angular_velocity_rpy[1], pkt->imu_angular_velocity_rpy[2]);
 
@@ -201,10 +195,10 @@ void sitl_state_callback(struct sitl_state_t *state)
     imuSetAttitudeRPY(xf, -yf, zf); // yes! pitch was inverted!!
 #else
     imuSetAttitudeQuat(
-        state->imu.orientation_quat_w
-      , state->imu.orientation_quat_x
-      , state->imu.orientation_quat_y
-      , state->imu.orientation_quat_z);
+        imu.orientation_quat_w
+      , imu.orientation_quat_x
+      , imu.orientation_quat_y
+      , imu.orientation_quat_z);
 #endif
 #endif
 
@@ -225,7 +219,7 @@ void sitl_state_callback(struct sitl_state_t *state)
     //    printf("simRate = %lf, millis64 = %lu, millis64_real = %lu, deltaSim = %lf\n", simRate, millis64(), millis64_real(), deltaSim*1e6);
     //printfxy(0, SIMRATE_Y, "simRate=%lf, deltaSim=%lf", simRate, deltaSim);
 
-    last_timestamp = state->sim_time;
+    last_timestamp = imu.sim_time;
     last_realtime = micros64_real();
 
     last_ts.tv_sec = now_ts.tv_sec;
@@ -287,9 +281,7 @@ void systemInit(void)
         exit(1);
     }
 
-    sitl_start_ipc();
-
-    sitl_register_state_callback(&sitl_state_callback);
+    fcl_init_sim_proxy(&fcl_callback);
 
     // serial can't been slow down
     rescheduleTask(TASK_SERIAL, 1);
@@ -300,7 +292,7 @@ void systemReset(void)
     printf("[system]Reset!\n");
     workerRunning = false;
     pthread_join(tcpWorker, NULL);
-    sitl_stop_ipc();
+    fcl_deinit_sim_proxy();
     exit(0);
 }
 void systemResetToBootloader(void)
@@ -308,7 +300,7 @@ void systemResetToBootloader(void)
     printf("[system]ResetToBootloader!\n");
     workerRunning = false;
     pthread_join(tcpWorker, NULL);
-    sitl_stop_ipc();
+    fcl_deinit_sim_proxy();
     exit(0);
 }
 
@@ -522,10 +514,10 @@ void pwmCompleteMotorUpdate(uint8_t motorCount)
         outScale = 500.0;
     }
 
-    sitl_motor.motor[3] = motorsPwm[0] / outScale;
-    sitl_motor.motor[0] = motorsPwm[1] / outScale;
-    sitl_motor.motor[1] = motorsPwm[2] / outScale;
-    sitl_motor.motor[2] = motorsPwm[3] / outScale;
+    data_motor.motor[3] = motorsPwm[0] / outScale;
+    data_motor.motor[0] = motorsPwm[1] / outScale;
+    data_motor.motor[1] = motorsPwm[2] / outScale;
+    data_motor.motor[2] = motorsPwm[3] / outScale;
 
     // get one "fdm_packet" can only send one "servo_packet"!!
     //if (pthread_mutex_trylock(&updateLock) != 0) return;

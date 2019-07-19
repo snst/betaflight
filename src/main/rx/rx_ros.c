@@ -34,7 +34,7 @@
 #include "rx_ros.h"
 
 #include "fc/config.h"
-#include "/home/stsc/work/ros_ws/sitl_ipc/include/sitl_ipc_fc.h"
+#include "fcl_types.h"
 
 uint16_t rxRosRcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
 uint8_t rxRosNewPacketAvailable; // set true when a new packet is received
@@ -42,12 +42,15 @@ uint8_t rxRosNewPacketAvailable; // set true when a new packet is received
 uint16_t rxRosReadRawRC(const rxRuntimeConfig_t *rxRuntimeConfig, uint8_t channel)
 {
     uint16_t ret = 0;
-    struct sitl_joy_t *msg = sitl_get_joystick();
-    if (msg && channel < MAX_RC_CHANNELS)
+    fcl_joystick_t js;
+    fcl_get_from_sim(eJoystick, &js);
+    if (channel < MAX_RC_CHANNELS)
     {
-        double val = msg->val[channel];
+        double val = js.val[channel];
         ret = 1000 + (500.0f * (val + 1.0));
+        printf("js %u: %f %u\n", channel, val, ret);
     }
+
 
     return ret;
     /*
@@ -70,7 +73,7 @@ static uint8_t rxRosFrameStatus(rxRuntimeConfig_t *rxRuntimeConfig)
 {
     UNUSED(rxRuntimeConfig);
     static uint32_t cnt = 0;
-    struct sitl_joy_t *msg = sitl_get_joystick();
+    //struct sitl_joy_t *msg = sitl_get_joystick();
 
     static uint32_t last_ms = 0;
 

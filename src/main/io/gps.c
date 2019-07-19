@@ -56,6 +56,10 @@
 
 #include "sensors/sensors.h"
 
+#ifdef USE_FAKE_GPS
+#include "fcl_types.h"
+#endif
+
 #define LOG_ERROR        '?'
 #define LOG_IGNORED      '!'
 #define LOG_SKIPPED      '>'
@@ -509,10 +513,14 @@ double get_gps_longitude();
 void gpsUpdate(timeUs_t currentTimeUs)
 {
 #ifdef USE_FAKE_GPS
-    gpsSol.numSat = 8;
-    gpsSol.llh.lat = get_gps_latitude() * GPS_DEGREES_DIVIDER;
-    gpsSol.llh.lon = get_gps_longitude() * GPS_DEGREES_DIVIDER; 
-    ENABLE_STATE(GPS_FIX);
+    fcl_gps_t gps = {0};
+    if (fcl_get_from_sim(eGps, &gps)) {
+
+        gpsSol.numSat = gps.satellites;
+        gpsSol.llh.lat = gps.latitude * GPS_DEGREES_DIVIDER;
+        gpsSol.llh.lon = gps.longitude * GPS_DEGREES_DIVIDER; 
+        ENABLE_STATE(GPS_FIX);
+    }
          /*   gpsSol.numSat = sbufReadU8(src);
         gpsSol.llh.lat = sbufReadU32(src);
         gpsSol.llh.lon = sbufReadU32(src);
