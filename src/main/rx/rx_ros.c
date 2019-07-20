@@ -38,75 +38,109 @@
 
 uint16_t rxRosRcData[MAX_SUPPORTED_RC_CHANNEL_COUNT];
 uint8_t rxRosNewPacketAvailable; // set true when a new packet is received
+static fcl_joystick_t js;
 
-uint16_t rxRosReadRawRC(const rxRuntimeConfig_t *rxRuntimeConfig, uint8_t channel)
-{
-    uint16_t ret = 0;
-    fcl_joystick_t js;
-    fcl_get_from_sim(eJoystick, &js);
-    if (channel < MAX_RC_CHANNELS)
-    {
-        double val = js.val[channel];
-        ret = 1000 + (500.0f * (val + 1.0));
-        printf("js %u: %f %u\n", channel, val, ret);
-    }
+uint16_t calcAxisVal(float val) {
+  return 1000 + (500.0f * (val + 1.0)); //
+}
 
+uint16_t calcButtonVal(uint16_t val, uint16_t btn) {
+  return ((val & btn) > 0) ? 1700 : 1300; //
+}
 
-    return ret;
-    /*
-    if (channel >= rxRuntimeConfig->channelCount) {
-        return 0;
-    }
-    if (rxRosNewPacketAvailable) {
+uint16_t rxRosReadRawRC(const rxRuntimeConfig_t *rxRuntimeConfig,
+                        uint8_t channel) {
+  uint16_t ret = 0;
+  switch (channel) {
+  case 0:
+    ret = calcAxisVal(js.val[0]);
+    break;
+  case 1:
+    ret = calcAxisVal(-js.val[1]);
+    break;
+  case 2:
+    ret = calcAxisVal(-js.val[2]); // throttle
+    break;
+  case 3:
+    ret = calcAxisVal(js.val[4]);
+    break;
+  case 4:
+    ret = calcAxisVal(js.val[3]);
+    break;
+  case 5:
+    ret = calcButtonVal(js.button, 1);
+    break;
+  case 6:
+    ret = calcButtonVal(js.button, 2); 
+    break;
+  case 7:
+    ret = calcButtonVal(js.button, 4);
+    break;
+  case 8:
+    ret = calcButtonVal(js.button, 8);
+    break;
+  case 9:
+    ret = calcButtonVal(js.button, 16);
+    break;
+  }
+
+  //  printf("js %u: %f %u\n", channel, val, ret);
+
+  return ret;
+  /*
+  if (channel >= rxRuntimeConfig->channelCount) {
+      return 0;
+  }
+  if (rxRosNewPacketAvailable) {
 //        protocolSetRcDataFromPayload(rxSpiRcData, rxSpiPayload);
-        rxRosNewPacketAvailable = false;
-    }
-    return rxRosRcData[channel];*/
+      rxRosNewPacketAvailable = false;
+  }
+  return rxRosRcData[channel];*/
 }
 
 /*
  * Returns true if the RX has received new data.
  * Called from updateRx in rx.c, updateRx called from taskUpdateRxCheck.
- * If taskUpdateRxCheck returns true, then taskUpdateRxMain will shortly be called.
+ * If taskUpdateRxCheck returns true, then taskUpdateRxMain will shortly be
+ * called.
  */
-static uint8_t rxRosFrameStatus(rxRuntimeConfig_t *rxRuntimeConfig)
-{
-    UNUSED(rxRuntimeConfig);
-    static uint32_t cnt = 0;
-    //struct sitl_joy_t *msg = sitl_get_joystick();
+static uint8_t rxRosFrameStatus(rxRuntimeConfig_t *rxRuntimeConfig) {
+  UNUSED(rxRuntimeConfig);
+  static uint32_t l = 0;
+  fcl_get_from_sim(eJoystick, &js);
 
-    static uint32_t last_ms = 0;
-
-    uint32_t now = millis();
-    if (now - last_ms > 100)
-    {
-        last_ms = now;
-        return RX_FRAME_COMPLETE;
+    if ((js.button & 4) > 0) {
+        printf("reset\n");
+        fcl_resetworld_t r;
+        fcl_send_to_sim(eResetWorld, &r);
     }
 
-    /*
-    if (cnt != msg->cnt)
-    {
-        cnt = msg->cnt;
-        return RX_FRAME_COMPLETE;
-    }
-    */
-    return RX_FRAME_PENDING;
+ // printf("%u: %f %f %f %f %f %u\n", l++, js.val[0], js.val[1], js.val[2], js.val[3],
+ //        js.val[4], js.button);
+
+  static uint32_t last_ms = 0;
+
+  uint32_t now = millis();
+  if (now - last_ms > 100) {
+    last_ms = now;
+    return RX_FRAME_COMPLETE;
+  }
+
+  return RX_FRAME_PENDING;
 }
 
 /*
  * Set and initialize the RX protocol
  */
-bool rxRosInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig)
-{
-    bool ret = true;
+bool rxRosInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig) {
+  bool ret = true;
 
-    rxRosNewPacketAvailable = false;
-    rxRuntimeConfig->rxRefreshRate = 20000;
+  rxRosNewPacketAvailable = false;
+  rxRuntimeConfig->rxRefreshRate = 20000;
 
-    rxRuntimeConfig->rcReadRawFn = rxRosReadRawRC;
-    rxRuntimeConfig->rcFrameStatusFn = rxRosFrameStatus;
+  rxRuntimeConfig->rcReadRawFn = rxRosReadRawRC;
+  rxRuntimeConfig->rcFrameStatusFn = rxRosFrameStatus;
 
-    return ret;
+  return ret;
 }
 #endif
