@@ -55,6 +55,7 @@ const timerHardware_t timerHardware[1]; // unused
 #include "dyad.h"
 #include "target/SITL/udplink.h"
 #include "fcl_sim_proxy.h"
+#include "ser_tcp.h"
 
 uint32_t SystemCoreClock;
 
@@ -233,7 +234,7 @@ void fcl_callback(fclCmd_t data)
 }
 
 
-static void *tcpThread(void *data)
+static void *tcpThread2(void *data)
 {
     UNUSED(data);
 
@@ -248,6 +249,12 @@ static void *tcpThread(void *data)
 
     dyad_shutdown();
     printf("tcpThread end!!\n");
+    return NULL;
+}
+
+static void *tcpThread(void *data)
+{
+    //ser_tcp_init(3333);
     return NULL;
 }
 

@@ -111,8 +111,8 @@ static uint8_t rxRosFrameStatus(rxRuntimeConfig_t *rxRuntimeConfig) {
 
     if ((js.button & 4) > 0) {
         printf("reset\n");
-        fcl_resetworld_t r;
-        fcl_send_to_sim(eResetWorld, &r);
+//        fcl_resetworld_t r;
+//        fcl_send_to_sim(eResetWorld, &r);
     }
 
  // printf("%u: %f %f %f %f %f %u\n", l++, js.val[0], js.val[1], js.val[2], js.val[3],
