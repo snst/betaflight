@@ -39,7 +39,8 @@
 #endif
 
 #if defined(SIMULATOR_BUILD)
-#include "drivers/serial_tcp.h"
+//#include "drivers/serial_tcp.h"
+#include "target/SITL/ser_tcp.h"
 #endif
 
 #include "drivers/light_led.h"
@@ -379,7 +380,8 @@ serialPort_t *openSerialPort(
 #endif
 #if defined(SIMULATOR_BUILD)
             // emulate serial ports over TCP
-            serialPort = serTcpOpen(SERIAL_PORT_IDENTIFIER_TO_UARTDEV(identifier), rxCallback, rxCallbackData, baudRate, mode, options);
+//            serialPort = serTcpOpen(SERIAL_PORT_IDENTIFIER_TO_UARTDEV(identifier), rxCallback, rxCallbackData, baudRate, mode, options);
+            serialPort = ser_tcp_open(SERIAL_PORT_IDENTIFIER_TO_UARTDEV(identifier), rxCallback, rxCallbackData, baudRate, mode, options);
 #else
             serialPort = uartOpen(SERIAL_PORT_IDENTIFIER_TO_UARTDEV(identifier), rxCallback, rxCallbackData, baudRate, mode, options);
 #endif
