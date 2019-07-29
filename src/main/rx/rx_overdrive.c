@@ -44,6 +44,33 @@ uint8_t rxOverdriveNewPacketAvailable; // set true when a new packet is received
 rxRuntimeConfig_t rxRuntimeConfigOverdriveMSP;
 rxRuntimeConfig_t rxRuntimeConfigOverdriveROS;
 
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#define MAX(a,b) (((a)>(b))?(a):(b))
+
+bool hc_on = false;
+
+uint16_t hc(uint16_t raw_p)
+{
+    uint16_t hover = 1560;
+
+    int32_t dest = 100;
+    int32_t r = 0;
+    int32_t sonar = rangefinderGetLatestAltitude();
+    int32_t error = dest - sonar;
+    float P = (raw_p-1000.0f) / 400.0f;
+    if(P<0.0f) {
+        P = 0.0f;
+    }
+
+    r = hover + (error * P);
+
+    r = MIN(r,2000);
+    r = MAX(r, 0);
+
+    printf("is=%i, err=%i, r=%i, P=%f, %d\n", sonar, error, r, P, hc_on);
+    return r;
+}
+
 uint16_t rxOverdriveReadRawRC(const rxRuntimeConfig_t *rxRuntimeConfig, uint8_t channel)
 {
     uint16_t rM = rxRuntimeConfigOverdriveMSP.rcReadRawFn(rxRuntimeConfig, channel); // MSP
@@ -56,12 +83,32 @@ uint16_t rxOverdriveReadRawRC(const rxRuntimeConfig_t *rxRuntimeConfig, uint8_t 
         m[channel] = rM;
         r[channel] = rR;
     }
-    if(channel==55) {
+    /*
+    if(channel==2) {
         printf("RC#%i, %d %d %d %d %d %d | %d %d %d %d %d %d\n", i++
         , r[0], r[1], r[2], r[3], r[4], r[5]
         , m[0], m[1], m[2], m[3], m[4], m[5]
         );
+    }*/
+
+    if(channel==9) {
+        hc_on = rR >= 1500;
+//        printf("ch %i\n", rR);
     }
+
+    if(channel==2) {
+
+        uint16_t c = hc(r[4]);
+        if (hc_on) {
+            rR = c;
+        }
+  //          if ((r[4] > 1800)) {
+  //              rR = c;
+  //          }
+
+//        printf("RC#%i, %d | %d => %d\n", i++        , r[2]        , m[2]        , rR        );
+    }
+
 
     return rR;
 /*

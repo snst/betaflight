@@ -507,30 +507,9 @@ static void updateGpsIndicator(timeUs_t currentTimeUs)
     }
 }
 
-double get_gps_latitude();
-double get_gps_longitude();
 
 void gpsUpdate(timeUs_t currentTimeUs)
 {
-#ifdef USE_FAKE_GPS
-    fcl_gps_t gps = {0};
-    if (fcl_get_from_sim(eGps, &gps)) {
-
-        gpsSol.numSat = gps.satellites;
-        gpsSol.llh.lat = gps.latitude * GPS_DEGREES_DIVIDER;
-        gpsSol.llh.lon = gps.longitude * GPS_DEGREES_DIVIDER; 
-        ENABLE_STATE(GPS_FIX);
-    }
-         /*   gpsSol.numSat = sbufReadU8(src);
-        gpsSol.llh.lat = sbufReadU32(src);
-        gpsSol.llh.lon = sbufReadU32(src);
-        gpsSol.llh.altCm = sbufReadU16(src) * 100; // alt changed from 1m to 0.01m per lsb since MSP API 1.39 by RTH. Received MSP altitudes in 1m per lsb have to upscaled.
-        gpsSol.groundSpeed = sbufReadU16(src);
-        GPS_update |= GPS_MSP_UPDATE;        // MSP data signalisation to GPS functions
-*/
-    return;
-#endif
-
     // read out available GPS bytes
     if (gpsPort) {
         while (serialRxBytesWaiting(gpsPort))
@@ -541,7 +520,35 @@ void gpsUpdate(timeUs_t currentTimeUs)
         sensorsSet(SENSOR_GPS);
         onGpsNewData();
         GPS_update &= ~GPS_MSP_UPDATE;
+    } 
+    
+#ifdef USE_FAKE_GPS
+    else 
+    {
+        fcl_gps_t gps = {0};
+        if (fcl_get_from_sim(eGps, &gps)) 
+        {
+            gpsSol.numSat = gps.satellites;
+            gpsSol.llh.lat = gps.latitude * GPS_DEGREES_DIVIDER;
+            gpsSol.llh.lon = gps.longitude * GPS_DEGREES_DIVIDER; 
+            sensorsSet(SENSOR_GPS);
+            ENABLE_STATE(GPS_FIX);
+
+            // new data received and parsed, we're in business
+            gpsData.lastLastMessage = gpsData.lastMessage;
+            gpsData.lastMessage = millis();
+            sensorsSet(SENSOR_GPS);
+
+            GPS_update ^= GPS_DIRECT_TICK;
+
+        #if 0
+            debug[3] = GPS_update;
+        #endif
+
+            onGpsNewData();        
+        }
     }
+#endif
 
     switch (gpsData.state) {
         case GPS_UNKNOWN:

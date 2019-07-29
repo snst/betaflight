@@ -116,14 +116,14 @@ void sendMotorUpdate()
 //    printfxy(0, SEND_MOTOR_Y, "<< ros sendMotorUpdate(#%u, %f, %f, %f, %f, %u)\n", i++, sitl_motor.motor[0], sitl_motor.motor[1], sitl_motor.motor[2], sitl_motor.motor[3], 0);
 }
 
-void fcl_callback(fclCmd_t data)
+void fcl_callback(void* ptr, fclCmd_t data)
 {
-    if (eImu != data) {
+    if (eFcstate != data) {
         return;
     }
 
-    fcl_imu_t imu;
-    fcl_get_from_sim(eImu, &imu);
+    fcl_fcstate_t state;
+    fcl_get_from_sim(eFcstate, &state);
 
     static double last_timestamp = 0;  // in seconds
     static uint64_t last_realtime = 0; // in uS
@@ -138,13 +138,13 @@ void fcl_callback(fclCmd_t data)
     const uint64_t realtime_now = micros64_real();
     if (realtime_now > last_realtime + 500 * 1e3)
     { // 500ms timeout
-        last_timestamp = imu.sim_time;
+        last_timestamp = state.sim_time;
         last_realtime = realtime_now;
         sendMotorUpdate();
         return;
     }
 
-    const double deltaSim = imu.sim_time - last_timestamp; // in ms, max step size in gazebo
+    const double deltaSim = state.sim_time - last_timestamp; // in ms, max step size in gazebo
  //   printfxy(0, UPDATE_STATE_Y, ">> sitl_state_callback(#%u, delta=%f, sim_time=%f)", i++, deltaSim, imu.sim_time);
  //   printfxy(0, SONAR_Y, "> sonar %f", state->sonar.distance);
 
@@ -155,15 +155,15 @@ void fcl_callback(fclCmd_t data)
     }
 
     int16_t x, y, z;
-    x = constrain(-imu.linear_acceleration_x * ACC_SCALE, -32767, 32767);
-    y = constrain(-imu.linear_acceleration_y * ACC_SCALE, -32767, 32767);
-    z = constrain(-imu.linear_acceleration_z * ACC_SCALE, -32767, 32767);
+    x = constrain(-state.imu.linear_acceleration_x * ACC_SCALE, -32767, 32767);
+    y = constrain(-state.imu.linear_acceleration_y * ACC_SCALE, -32767, 32767);
+    z = constrain(-state.imu.linear_acceleration_z * ACC_SCALE, -32767, 32767);
     fakeAccSet(fakeAccDev, x, y, z);
     //    printf("[acc]%lf,%lf,%lf\n", pkt->imu_linear_acceleration_xyz[0], pkt->imu_linear_acceleration_xyz[1], pkt->imu_linear_acceleration_xyz[2]);
 
-    x = constrain(imu.angular_velocity_r * GYRO_SCALE * RAD2DEG, -32767, 32767);
-    y = constrain(-imu.angular_velocity_p * GYRO_SCALE * RAD2DEG, -32767, 32767);
-    z = constrain(-imu.angular_velocity_y * GYRO_SCALE * RAD2DEG, -32767, 32767);
+    x = constrain(state.imu.angular_velocity_r * GYRO_SCALE * RAD2DEG, -32767, 32767);
+    y = constrain(-state.imu.angular_velocity_p * GYRO_SCALE * RAD2DEG, -32767, 32767);
+    z = constrain(-state.imu.angular_velocity_y * GYRO_SCALE * RAD2DEG, -32767, 32767);
     fakeGyroSet(fakeGyroDev, x, y, z);
     //    printf("[gyr]%lf,%lf,%lf\n", pkt->imu_angular_velocity_rpy[0], pkt->imu_angular_velocity_rpy[1], pkt->imu_angular_velocity_rpy[2]);
 
@@ -195,10 +195,10 @@ void fcl_callback(fclCmd_t data)
     imuSetAttitudeRPY(xf, -yf, zf); // yes! pitch was inverted!!
 #else
     imuSetAttitudeQuat(
-        imu.orientation_quat_w
-      , imu.orientation_quat_x
-      , imu.orientation_quat_y
-      , imu.orientation_quat_z);
+        state.imu.orientation_quat_w
+      , state.imu.orientation_quat_x
+      , state.imu.orientation_quat_y
+      , state.imu.orientation_quat_z);
 #endif
 #endif
 
@@ -219,7 +219,7 @@ void fcl_callback(fclCmd_t data)
     //    printf("simRate = %lf, millis64 = %lu, millis64_real = %lu, deltaSim = %lf\n", simRate, millis64(), millis64_real(), deltaSim*1e6);
     //printfxy(0, SIMRATE_Y, "simRate=%lf, deltaSim=%lf", simRate, deltaSim);
 
-    last_timestamp = imu.sim_time;
+    last_timestamp = state.sim_time;
     last_realtime = micros64_real();
 
     last_ts.tv_sec = now_ts.tv_sec;
