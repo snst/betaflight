@@ -96,17 +96,12 @@ uint16_t rxOverdriveReadRawRC(const rxRuntimeConfig_t *rxRuntimeConfig, uint8_t 
 //        printf("ch %i\n", rR);
     }
 
-    if(channel==2) {
+    if((channel==2)) {
 
-        uint16_t c = hc(r[4]);
         if (hc_on) {
-            rR = c;
+            rR = rM;
         }
-  //          if ((r[4] > 1800)) {
-  //              rR = c;
-  //          }
-
-//        printf("RC#%i, %d | %d => %d\n", i++        , r[2]        , m[2]        , rR        );
+        printf("RC#%i, %d | %d => %d\n", i++, r[2], m[2], rR);
     }
 
 
